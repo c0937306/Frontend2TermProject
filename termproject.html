@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Cryptocurrency Tracker</title>
+    <style>
+        /* CSS Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        main {
+            padding: 1rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .crypto-list, .comparison {
+            margin-bottom: 2rem;
+        }
+
+        .crypto-list table, .comparison table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 0.8rem;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .controls {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .comparison {
+            background-color: #fff;
+            padding: 1rem;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+
+        @media (max-width: 768px) {
+            table th, table td {
+                font-size: 0.9rem;
+                padding: 0.6rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            table th, table td {
+                font-size: 0.8rem;
+                padding: 0.4rem;
+            }
+
+            button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Real-Time Cryptocurrency Tracker</h1>
+    </header>
+    <main>
+        <!-- Cryptocurrency Listing -->
+        <section class="crypto-list">
+            <h2>Cryptocurrency Listing</h2>
+            <div class="controls">
+                <button id="refresh-data">Refresh Data</button>
+            </div>
+            <table id="crypto-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Symbol</th>
+                        <th>Current Price</th>
+                        <th>24h Change</th>
+                        <th>Market Cap</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data rows will be populated dynamically -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Comparison Section -->
+        <section class="comparison">
+            <h2>Comparison</h2>
+            <table id="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Symbol</th>
+                        <th>Current Price</th>
+                        <th>24h Change</th>
+                        <th>Market Cap</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Comparison rows will be populated dynamically -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script>
+        // JavaScript for Functionality
+        const API_URL = 'https://api.coingecko.com/api/v3/coins/markets';
+        const CURRENCY = 'usd';
+        const MAX_COMPARISON = 5;
+
+        const cryptoTable = document.getElementById('crypto-table').querySelector('tbody');
+        const comparisonTable = document.getElementById('comparison-table').querySelector('tbody');
+        const refreshButton = document.getElementById('refresh-data');
+
+        let comparisonList = JSON.parse(localStorage.getItem('comparisonList')) || [];
+
+        // Fetch Cryptocurrency Data
+        async function fetchCryptoData() {
+            try {
+                const response = await fetch(`${API_URL}?vs_currency=${CURRENCY}&order=market_cap_desc&per_page=50&page=1`);
+                const data = await response.json();
+                renderCryptoList(data);
+            } catch (error) {
+                console.error('Error fetching cryptocurrency data:', error);
+            }
+        }
+
+        // Render Cryptocurrency List
+        function renderCryptoList(data) {
+            cryptoTable.innerHTML = '';
+            data.forEach((crypto) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${crypto.name}</td>
+                    <td>${crypto.symbol.toUpperCase()}</td>
+                    <td>$${crypto.current_price.toFixed(2)}</td>
+                    <td>${crypto.price_change_percentage_24h.toFixed(2)}%</td>
+                    <td>$${crypto.market_cap.toLocaleString()}</td>
+                    <td><button onclick="addToComparison('${crypto.id}', '${crypto.name}', '${crypto.symbol}', ${crypto.current_price}, ${crypto.price_change_percentage_24h}, ${crypto.market_cap})">Add</button></td>
+                `;
+                cryptoTable.appendChild(row);
+            });
+        }
+
+        // Add Cryptocurrency to Comparison
+        function addToComparison(id, name, symbol, price, change, marketCap) {
+            if (comparisonList.length >= MAX_COMPARISON) {
+                alert('You can only compare up to 5 cryptocurrencies.');
+                return;
+            }
+
+            const exists = comparisonList.find((item) => item.id === id);
+            if (exists) {
+                alert('This cryptocurrency is already in the comparison list.');
+                return;
+            }
+
+            const crypto = { id, name, symbol, price, change, marketCap };
+            comparisonList.push(crypto);
+            localStorage.setItem('comparisonList', JSON.stringify(comparisonList));
+            renderComparisonList();
+        }
+
+        // Render Comparison List
+        function renderComparisonList() {
+            comparisonTable.innerHTML = '';
+            comparisonList.forEach((crypto, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${crypto.name}</td>
+                    <td>${crypto.symbol.toUpperCase()}</td>
+                    <td>$${crypto.price.toFixed(2)}</td>
+                    <td>${crypto.change.toFixed(2)}%</td>
+                    <td>$${crypto.marketCap.toLocaleString()}</td>
+                    <td><button onclick="removeFromComparison(${index})">Remove</button></td>
+                `;
+                comparisonTable.appendChild(row);
+            });
+        }
+
+        // Remove Cryptocurrency from Comparison
+        function removeFromComparison(index) {
+            comparisonList.splice(index, 1);
+            localStorage.setItem('comparisonList', JSON.stringify(comparisonList));
+            renderComparisonList();
+        }
+
+        // Event Listeners
+        refreshButton.addEventListener('click', fetchCryptoData);
+
+        // Initialize App
+        fetchCryptoData();
+        renderComparisonList();
+    </script>
+</body>
+</html>
